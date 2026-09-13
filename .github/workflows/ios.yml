@@ -9,20 +9,38 @@ on:
 jobs:
   test:
     runs-on: macos-15
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Xcode version
-        run: xcodebuild -version
-
-      - name: Build and test (iPhone + iPad simulators)
+      - name: Tools
         run: |
-          mkdir -p build
-          bash scripts/ci_test.sh
+          xcodebuild -version
+          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
+
+      - name: Generate project
+        run: bash scripts/ci_test.sh prepare
+
+      - name: Build for testing
+        timeout-minutes: 25
+        run: bash scripts/ci_test.sh build
+
+      - name: Unit tests
+        timeout-minutes: 15
+        run: bash scripts/ci_test.sh unit
+
+      - name: UI tests on iPhone
+        if: always()
+        timeout-minutes: 20
+        run: bash scripts/ci_test.sh ui iphone
+
+      - name: UI tests on iPad
+        if: always()
+        timeout-minutes: 20
+        run: bash scripts/ci_test.sh ui ipad
 
       - name: Upload screenshots
         if: always()
@@ -31,9 +49,9 @@ jobs:
           name: screenshots
           path: screenshots
 
-      - name: Upload test log
+      - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: xcodebuild-log
-          path: build/xcodebuild.log
+          name: logs
+          path: build/*.log

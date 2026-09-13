@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Сборка, модульные и UI-тесты в симуляторах iPhone и iPad; скриншоты складываются в ./screenshots
-set -euo pipefail
+# Этапы CI: prepare | build | unit | ui <iphone|ipad>
+set -uo pipefail
 cd "$(dirname "$0")/.."
+mkdir -p build screenshots
 
-xcodegen generate
-
-pick() {  # первый доступный симулятор, имя которого начинается с $1
+pick() {  # UDID самого нового доступного симулятора с именем, начинающимся с $1
   xcrun simctl list devices available -j | python3 -c "
 import json,sys,re
 d=json.load(sys.stdin)['devices']
@@ -19,26 +18,61 @@ for rt,devs in d.items():
 print(best[2] if best else '')
 "
 }
-IPHONE=$(pick "iPhone 16 Pro")
-[ -z "$IPHONE" ] && IPHONE=$(pick "iPhone")
-IPAD=$(pick "iPad Pro 13")
-[ -z "$IPAD" ] && IPAD=$(pick "iPad")
-echo "iPhone: $IPHONE  iPad: $IPAD"
 
-for UDID in "$IPHONE" "$IPAD"; do
-  xcrun simctl boot "$UDID" || true
-  # русский язык и регион для системных элементов интерфейса
-  xcrun simctl spawn "$UDID" defaults write "Apple Global Domain" AppleLanguages -array ru
-  xcrun simctl spawn "$UDID" defaults write "Apple Global Domain" AppleLocale -string ru_RU
-  xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
-done
+device_udid() {
+  case "$1" in
+    iphone) u=$(pick "iPhone 16 Pro"); [ -z "$u" ] && u=$(pick "iPhone") ;;
+    ipad)   u=$(pick "iPad Pro 13"); [ -z "$u" ] && u=$(pick "iPad Pro"); [ -z "$u" ] && u=$(pick "iPad") ;;
+  esac
+  echo "$u"
+}
 
-mkdir -p screenshots build
-export TEST_RUNNER_SCREENSHOT_DIR="$PWD/screenshots"
+prepare_sim() {
+  local udid=$1
+  xcrun simctl boot "$udid" 2>/dev/null || true
+  xcrun simctl bootstatus "$udid" -b
+  xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 || true
+}
 
-set +e
-xcodebuild test   -project InventoryQR.xcodeproj   -scheme InventoryQR   -destination "id=$IPHONE"   -destination "id=$IPAD"   -parallel-testing-enabled NO   -resultBundlePath build/Tests.xcresult   CODE_SIGNING_ALLOWED=NO > build/xcodebuild.log 2>&1
-STATUS=$?
-set -e
-grep -E "(error:|Test Case .*(passed|failed)|Executed [0-9]+ test|\*\* TEST)" build/xcodebuild.log | tail -80 || true
-exit $STATUS
+case "${1:-}" in
+  prepare)
+    xcodegen generate
+    ;;
+  build)
+    udid=$(device_udid iphone)
+    xcodebuild build-for-testing -project InventoryQR.xcodeproj -scheme InventoryQR \
+      -destination "id=$udid" -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO \
+      > build/build.log 2>&1
+    status=$?
+    grep -E "error:|warning: .*deprecated|\*\* TEST BUILD" build/build.log | tail -60
+    exit $status
+    ;;
+  unit)
+    udid=$(device_udid iphone)
+    prepare_sim "$udid"
+    xcodebuild test-without-building -project InventoryQR.xcodeproj -scheme InventoryQR \
+      -destination "id=$udid" -derivedDataPath build/DerivedData \
+      -only-testing:InventoryQRTests \
+      -test-timeouts-enabled YES -default-test-execution-time-allowance 120 \
+      > build/unit.log 2>&1
+    status=$?
+    grep -E "error:|Test Case .*(passed|failed)|Executed [0-9]+ test|\*\* TEST" build/unit.log | tail -80
+    exit $status
+    ;;
+  ui)
+    udid=$(device_udid "$2")
+    prepare_sim "$udid"
+    export TEST_RUNNER_SCREENSHOT_DIR="$PWD/screenshots/$2"
+    xcodebuild test-without-building -project InventoryQR.xcodeproj -scheme InventoryQR \
+      -destination "id=$udid" -derivedDataPath build/DerivedData \
+      -only-testing:InventoryQRUITests \
+      -test-timeouts-enabled YES -default-test-execution-time-allowance 300 \
+      -resultBundlePath "build/UI-$2.xcresult" \
+      > "build/ui-$2.log" 2>&1
+    status=$?
+    grep -E "error:|Test Case .*(passed|failed)|Executed [0-9]+ test|\*\* TEST" "build/ui-$2.log" | tail -80
+    exit $status
+    ;;
+  *)
+    echo "usage: $0 prepare|build|unit|ui <iphone|ipad>"; exit 2 ;;
+esac
