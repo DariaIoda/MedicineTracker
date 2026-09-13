@@ -41,17 +41,12 @@ final class Lab1ScreenshotTests: XCTestCase {
 
         // Переход в комнату и карточку контейнера
         homeTitle.waitToAppear()
-        let storeroomLink = app.buttons["openRoom_Кладовая"]
-        for _ in 0..<6 where !(storeroomLink.exists && storeroomLink.isHittable) {
-            app.swipeUp()
-        }
-        storeroomLink.waitToAppear()
-        storeroomLink.tap()
+        app.scrollTo(app.buttons["openRoom_Кладовая"]).tap()
         app.navigationBars["Кладовая"].waitToAppear()
         ScreenshotHelper.capture("lab1_05_room", in: self)
 
         app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Инструменты")).firstMatch.tap()
-        app.staticTexts["Рулетка 5 м"].waitToAppear()
+        app.navigationBars["Коробка «Инструменты»"].waitToAppear()
         ScreenshotHelper.capture("lab1_06_container", in: self)
     }
 }

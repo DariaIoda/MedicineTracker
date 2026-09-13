@@ -2,11 +2,14 @@ import SwiftUI
 
 /// Экран комнаты: список её контейнеров.
 struct RoomView: View {
-    @Environment(InventoryStore.self) private var store
-    let roomID: Room.ID
+    @State private var viewModel: RoomViewModel
+
+    init(viewModel: RoomViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
-        if let room = store.room(id: roomID) {
+        if let room = viewModel.room {
             List {
                 Section("Контейнеры") {
                     ForEach(room.containers) { container in
@@ -23,42 +26,16 @@ struct RoomView: View {
     }
 }
 
-/// Экран контейнера: перечень вещей внутри.
-struct ContainerView: View {
-    @Environment(InventoryStore.self) private var store
-    let containerID: StorageContainer.ID
-
-    var body: some View {
-        if let found = store.container(id: containerID) {
-            List {
-                Section {
-                    LabeledContent("Комната", value: found.room.name)
-                    LabeledContent("Код маркировки", value: found.container.code)
-                    LabeledContent("Всего предметов", value: "\(found.container.totalQuantity)")
-                }
-                Section("Вещи") {
-                    ForEach(found.container.items) { item in
-                        NavigationLink(value: Route.item(item.id)) {
-                            ItemRow(item: item)
-                        }
-                    }
-                }
-            }
-            .navigationTitle(found.container.name)
-            .navigationBarTitleDisplayMode(.inline)
-        } else {
-            ContentUnavailableView("Контейнер не найден", systemImage: "shippingbox")
-        }
-    }
-}
-
 /// Экран вещи с местоположением.
 struct ItemDetailView: View {
-    @Environment(InventoryStore.self) private var store
-    let itemID: Item.ID
+    @State private var viewModel: ItemDetailViewModel
+
+    init(viewModel: ItemDetailViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
-        if let location = store.location(ofItem: itemID) {
+        if let location = viewModel.location {
             List {
                 Section {
                     VStack(spacing: 12) {
@@ -81,7 +58,9 @@ struct ItemDetailView: View {
                 }
                 Section("Местоположение") {
                     Label(location.room.name, systemImage: location.room.icon)
-                    Label(location.container.name, systemImage: "shippingbox")
+                    NavigationLink(value: Route.container(location.container.id)) {
+                        Label(location.container.name, systemImage: "shippingbox")
+                    }
                 }
             }
             .navigationTitle("Вещь")

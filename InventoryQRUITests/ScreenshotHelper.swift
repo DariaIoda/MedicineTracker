@@ -18,6 +18,19 @@ enum ScreenshotHelper {
     }
 }
 
+extension XCUIApplication {
+    /// Прокручивает список, пока элемент не появится на экране (строки List создаются лениво).
+    @discardableResult
+    func scrollTo(_ element: XCUIElement, maxSwipes: Int = 8) -> XCUIElement {
+        var swipes = 0
+        while !(element.exists && element.isHittable) && swipes < maxSwipes {
+            swipeUp()
+            swipes += 1
+        }
+        return element.waitToAppear()
+    }
+}
+
 extension XCUIElement {
     @discardableResult
     func waitToAppear(_ timeout: TimeInterval = 10) -> XCUIElement {

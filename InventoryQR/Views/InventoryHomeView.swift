@@ -2,15 +2,23 @@ import SwiftUI
 
 /// Главный экран: иерархия хранения и текстовый поиск по вещам.
 struct InventoryHomeView: View {
-    @Environment(InventoryStore.self) private var store
-    @State private var searchText = ""
-    @State private var expanded: Set<StorageContainer.ID> = []
+    @Environment(AppDependencies.self) private var dependencies
+    @State private var viewModel: InventoryListViewModel
+    let onOpenContainer: (StorageContainer.ID) -> Void
+
+    init(viewModel: InventoryListViewModel, onOpenContainer: @escaping (StorageContainer.ID) -> Void) {
+        _viewModel = State(initialValue: viewModel)
+        self.onOpenContainer = onOpenContainer
+    }
 
     var body: some View {
+        @Bindable var viewModel = viewModel
         List {
-            if searchText.isEmpty {
+            if viewModel.isSearching {
+                searchResults
+            } else {
                 summarySection
-                ForEach(store.rooms) { room in
+                ForEach(viewModel.rooms) { room in
                     Section {
                         NavigationLink(value: Route.room(room.id)) {
                             Label("Открыть комнату", systemImage: "arrow.right.circle")
@@ -24,31 +32,44 @@ struct InventoryHomeView: View {
                         RoomHeader(room: room)
                     }
                 }
-            } else {
-                searchResults
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle("Инвентарь")
-        .searchable(text: $searchText,
+        .searchable(text: $viewModel.searchText,
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Поиск вещи")
-        .accessibilityIdentifier("homeList")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.isScannerPresented = true
+                } label: {
+                    Label("Сканировать QR", systemImage: "qrcode.viewfinder")
+                }
+                .accessibilityIdentifier("scanButton")
+            }
+        }
+        .sheet(isPresented: $viewModel.isScannerPresented) {
+            ScannerScreen(dependencies: dependencies, onOpenContainer: onOpenContainer)
+        }
     }
 
     private var summarySection: some View {
         Section {
             HStack(spacing: 12) {
-                StatBadge(value: store.rooms.count, title: "комнат", icon: "house")
-                StatBadge(value: store.containerCount, title: "контейнеров", icon: "shippingbox")
-                StatBadge(value: store.itemCount, title: "вещей", icon: "cube")
+                StatBadge(value: viewModel.roomCount, title: "комнат", icon: "house")
+                StatBadge(value: viewModel.containerCount, title: "контейнеров", icon: "shippingbox")
+                StatBadge(value: viewModel.itemCount, title: "вещей", icon: "cube")
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
         }
     }
 
     private func containerGroup(_ container: StorageContainer) -> some View {
-        DisclosureGroup(isExpanded: binding(for: container.id)) {
+        DisclosureGroup(isExpanded: Binding(
+            get: { viewModel.isExpanded(container.id) },
+            set: { viewModel.setExpanded(container.id, $0) }
+        )) {
             ForEach(container.items) { item in
                 NavigationLink(value: Route.item(item.id)) {
                     ItemRow(item: item)
@@ -66,33 +87,17 @@ struct InventoryHomeView: View {
 
     @ViewBuilder
     private var searchResults: some View {
-        let results = store.search(searchText)
+        let results = viewModel.searchResults
         if results.isEmpty {
-            ContentUnavailableView.search(text: searchText)
+            ContentUnavailableView.search(text: viewModel.searchText)
         } else {
             Section("Найдено: \(results.count)") {
                 ForEach(results) { location in
                     NavigationLink(value: Route.item(location.item.id)) {
-                        SearchResultRow(location: location, query: searchText)
+                        SearchResultRow(location: location, query: viewModel.searchText)
                     }
                 }
             }
         }
     }
-
-    private func binding(for id: StorageContainer.ID) -> Binding<Bool> {
-        Binding(
-            get: { expanded.contains(id) },
-            set: { isOn in
-                if isOn { expanded.insert(id) } else { expanded.remove(id) }
-            }
-        )
-    }
-}
-
-#Preview {
-    NavigationStack {
-        InventoryHomeView()
-    }
-    .environment(InventoryStore())
 }

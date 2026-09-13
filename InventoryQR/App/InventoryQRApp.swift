@@ -2,12 +2,12 @@ import SwiftUI
 
 @main
 struct InventoryQRApp: App {
-    @State private var store = InventoryStore()
+    @State private var dependencies = AppDependencies()
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(store)
+                .environment(dependencies)
         }
     }
 }
