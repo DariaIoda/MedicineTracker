@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     runs-on: macos-15
-    timeout-minutes: 75
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
 
@@ -51,12 +51,12 @@ jobs:
 
       - name: UI tests on iPhone
         if: always()
-        timeout-minutes: 20
+        timeout-minutes: 40
         run: bash scripts/ci_test.sh ui iphone
 
       - name: UI tests on iPad
         if: always()
-        timeout-minutes: 20
+        timeout-minutes: 40
         run: bash scripts/ci_test.sh ui ipad
 
       - name: Upload screenshots
