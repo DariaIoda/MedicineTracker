@@ -19,6 +19,12 @@ enum ScreenshotHelper {
 }
 
 extension XCUIApplication {
+    /// Закрывает системную подсказку клавиатуры о наборе скольжением, если она появилась.
+    func dismissKeyboardTip() {
+        let button = buttons["Continue"]
+        if button.waitForExistence(timeout: 1) { button.tap() }
+    }
+
     /// Прокручивает список, пока элемент не появится на экране (строки List создаются лениво).
     @discardableResult
     func scrollTo(_ element: XCUIElement, maxSwipes: Int = 8) -> XCUIElement {

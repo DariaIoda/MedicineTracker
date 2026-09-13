@@ -31,6 +31,7 @@ final class Lab4ScreenshotTests: XCTestCase {
         let roomName = app.textFields["roomName"].waitToAppear()
         roomName.tap()
         roomName.typeText("Балкон")
+        app.dismissKeyboardTip()
         app.buttons["saveButton"].tap()
         app.staticTexts["Балкон"].waitToAppear()
 

@@ -25,6 +25,7 @@ final class Lab3ScreenshotTests: XCTestCase {
         let roomName = app.textFields["roomName"].waitToAppear()
         roomName.tap()
         roomName.typeText("Кладовая")
+        app.dismissKeyboardTip()
         app.descendants(matching: .any)["icon_archivebox"].firstMatch.waitToAppear().tap()
         ScreenshotHelper.capture("lab3_02_room_form", in: self)
         tapSave()
@@ -35,6 +36,7 @@ final class Lab3ScreenshotTests: XCTestCase {
         let containerName = app.textFields["containerName"].waitToAppear()
         containerName.tap()
         containerName.typeText("Коробка «Инструменты»")
+        app.dismissKeyboardTip()
         ScreenshotHelper.capture("lab3_03_container_form", in: self)
         tapSave()
 
@@ -44,10 +46,14 @@ final class Lab3ScreenshotTests: XCTestCase {
         let itemName = app.textFields["itemName"].waitToAppear()
         itemName.tap()
         itemName.typeText("Шуруповёрт")
+        app.dismissKeyboardTip()
         app.buttons["itemType"].waitToAppear().tap()
         app.staticTexts["Инструменты"].waitToAppear()
         ScreenshotHelper.capture("lab3_04_type_classifier", in: self)
         app.staticTexts["Инструменты"].tap()
+        app.textFields["itemName"].waitToAppear()
+        app.dismissKeyboardTip()
+        sleep(1)                                       // ждём окончания анимации возврата к форме
         ScreenshotHelper.capture("lab3_05_item_form", in: self)
         tapSave()
 
