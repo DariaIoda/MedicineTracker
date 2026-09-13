@@ -41,8 +41,10 @@ final class Lab1ScreenshotTests: XCTestCase {
 
         // Переход в комнату и карточку контейнера
         homeTitle.waitToAppear()
-        let storeroomLink = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Открыть комнату")).element(boundBy: 2)
-        if !storeroomLink.isHittable { app.swipeUp() }
+        let storeroomLink = app.buttons["openRoom_Кладовая"]
+        for _ in 0..<6 where !(storeroomLink.exists && storeroomLink.isHittable) {
+            app.swipeUp()
+        }
         storeroomLink.waitToAppear()
         storeroomLink.tap()
         app.navigationBars["Кладовая"].waitToAppear()

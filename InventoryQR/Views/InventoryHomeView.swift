@@ -16,6 +16,7 @@ struct InventoryHomeView: View {
                             Label("Открыть комнату", systemImage: "arrow.right.circle")
                                 .foregroundStyle(.tint)
                         }
+                        .accessibilityIdentifier("openRoom_\(room.name)")
                         ForEach(room.containers) { container in
                             containerGroup(container)
                         }
