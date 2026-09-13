@@ -16,7 +16,7 @@ final class Lab3ScreenshotTests: XCTestCase {
     }
 
     func testCrudCycle() throws {
-        app.navigationBars["Инвентарь"].waitToAppear()
+        app.navigationBars["Инвентарь"].waitToAppear(90)
         app.staticTexts["Инвентарь пуст"].waitToAppear()
         ScreenshotHelper.capture("lab3_01_empty_database", in: self)
 

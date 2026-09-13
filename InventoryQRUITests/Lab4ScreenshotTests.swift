@@ -20,7 +20,7 @@ final class Lab4ScreenshotTests: XCTestCase {
         // Первый запуск: база данных на диске пуста, все данные приходят с сервера
         app.launchArguments = ["-resetStore"]
         app.launch()
-        app.navigationBars["Инвентарь"].waitToAppear()
+        app.navigationBars["Инвентарь"].waitToAppear(90)
         waitForSync()
         app.staticTexts["Гостиная"].waitToAppear()
         ScreenshotHelper.capture("lab4_01_synced_from_rest", in: self)
@@ -39,7 +39,7 @@ final class Lab4ScreenshotTests: XCTestCase {
         app.terminate()
         app.launchArguments = []
         app.launch()
-        app.navigationBars["Инвентарь"].waitToAppear()
+        app.navigationBars["Инвентарь"].waitToAppear(90)
         waitForSync()
         app.staticTexts["Балкон"].waitToAppear()
         XCTAssertTrue(app.staticTexts["Гостиная"].exists)

@@ -12,7 +12,7 @@ final class Lab2ScreenshotTests: XCTestCase {
     }
 
     func testContainerCardWithQRCode() throws {
-        app.navigationBars["Инвентарь"].waitToAppear()
+        app.navigationBars["Инвентарь"].waitToAppear(90)
         app.scrollTo(app.buttons["openRoom_Кладовая"]).tap()
         app.navigationBars["Кладовая"].waitToAppear()
         app.buttons.containing(NSPredicate(format: "label CONTAINS %@", "Инструменты")).firstMatch
@@ -31,7 +31,7 @@ final class Lab2ScreenshotTests: XCTestCase {
     }
 
     func testScanningFlow() throws {
-        app.navigationBars["Инвентарь"].waitToAppear()
+        app.navigationBars["Инвентарь"].waitToAppear(90)
         app.buttons["scanButton"].waitToAppear().tap()
         app.buttons["mock_label_box_0004"].waitToAppear()
         ScreenshotHelper.capture("lab2_04_scanner_mock", in: self)

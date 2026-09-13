@@ -13,7 +13,7 @@ final class Lab1ScreenshotTests: XCTestCase {
 
     func testHierarchyAndSearch() throws {
         let homeTitle = app.navigationBars["Инвентарь"]
-        homeTitle.waitToAppear()
+        homeTitle.waitToAppear(90)          // первый запуск на холодном симуляторе бывает долгим
         ScreenshotHelper.capture("lab1_01_home", in: self)
 
         // Раскрываем контейнер внутри комнаты

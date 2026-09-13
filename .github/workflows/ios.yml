@@ -28,6 +28,23 @@ jobs:
         timeout-minutes: 25
         run: bash scripts/ci_test.sh build
 
+      - name: Package simulator app
+        timeout-minutes: 20
+        run: |
+          xcodebuild build -project InventoryQR.xcodeproj -scheme InventoryQR -configuration Release \
+            -sdk iphonesimulator -destination "generic/platform=iOS Simulator" \
+            -derivedDataPath build/AppBuild ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO > build/app.log 2>&1 || { tail -40 build/app.log; exit 1; }
+          cd build/AppBuild/Build/Products/Release-iphonesimulator
+          lipo -info InventoryQR.app/InventoryQR
+          ditto -c -k --sequesterRsrc --keepParent InventoryQR.app "$GITHUB_WORKSPACE/InventoryQR-simulator.zip"
+
+      - name: Upload simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: InventoryQR-simulator-app
+          path: InventoryQR-simulator.zip
+
       - name: Unit tests
         timeout-minutes: 15
         run: bash scripts/ci_test.sh unit
