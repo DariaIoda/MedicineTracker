@@ -10,6 +10,8 @@ final class Room {
     var createdAt: Date
     /// Идентификатор записи на сервере; nil — комната создана пользователем.
     var remoteID: String?
+    /// Пользователь изменял запись, полученную с сервера: синхронизация её не перезаписывает.
+    var locallyModified: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \StorageContainer.room)
     var containers: [StorageContainer] = []
@@ -38,6 +40,7 @@ final class StorageContainer {
     @Attribute(.unique) var code: String
     var createdAt: Date
     var remoteID: String?
+    var locallyModified: Bool = false
 
     var room: Room?
 
@@ -72,6 +75,7 @@ final class Item {
     var note: String
     var createdAt: Date
     var remoteID: String?
+    var locallyModified: Bool = false
 
     var container: StorageContainer?
 
@@ -93,6 +97,19 @@ final class Item {
         let roomName = container?.room?.name ?? "Без комнаты"
         let containerName = container?.name ?? "Без контейнера"
         return "\(roomName) → \(containerName)"
+    }
+}
+
+/// Отметка об удалении пользователем записи, полученной с сервера,
+/// чтобы следующая синхронизация не восстановила её.
+@Model
+final class DeletedRecord {
+    @Attribute(.unique) var remoteID: String
+    var deletedAt: Date
+
+    init(remoteID: String, deletedAt: Date = .now) {
+        self.remoteID = remoteID
+        self.deletedAt = deletedAt
     }
 }
 

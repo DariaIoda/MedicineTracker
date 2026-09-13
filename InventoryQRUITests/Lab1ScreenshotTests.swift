@@ -7,7 +7,7 @@ final class Lab1ScreenshotTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uiTesting", "-seedSampleData"]
+        app.launchArguments += ["-uiTesting", "-seedSampleData", "-offline"]
         app.launch()
     }
 

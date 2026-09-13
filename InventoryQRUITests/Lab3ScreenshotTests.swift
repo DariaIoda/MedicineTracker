@@ -7,7 +7,7 @@ final class Lab3ScreenshotTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-uiTesting"]          // пустая база в памяти, без тестовых данных
+        app.launchArguments += ["-uiTesting", "-offline"]   // пустая база в памяти, без тестовых и серверных данных
         app.launch()
     }
 

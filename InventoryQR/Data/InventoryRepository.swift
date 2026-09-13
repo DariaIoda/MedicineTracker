@@ -108,10 +108,13 @@ final class SwiftDataInventoryRepository: InventoryRepository {
     func updateRoom(_ room: Room, name: String, icon: String) throws {
         room.name = try validName(name)
         room.icon = icon
+        room.locallyModified = true
         try context.save()
     }
 
     func deleteRoom(_ room: Room) throws {
+        room.containers.forEach { markDeleted($0) }
+        markDeleted(room.remoteID)
         context.delete(room)          // контейнеры и вещи удаляются каскадно
         try context.save()
     }
@@ -130,10 +133,12 @@ final class SwiftDataInventoryRepository: InventoryRepository {
     func updateContainer(_ container: StorageContainer, name: String, room: Room) throws {
         container.name = try validName(name)
         container.room = room
+        container.locallyModified = true
         try context.save()
     }
 
     func deleteContainer(_ container: StorageContainer) throws {
+        markDeleted(container)
         context.delete(container)     // вещи удаляются каскадно
         try context.save()
     }
@@ -160,15 +165,28 @@ final class SwiftDataInventoryRepository: InventoryRepository {
         item.typeID = typeID
         item.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
         item.container = container
+        item.locallyModified = true
         try context.save()
     }
 
     func deleteItem(_ item: Item) throws {
+        markDeleted(item.remoteID)
         context.delete(item)
         try context.save()
     }
 
     // MARK: вспомогательное
+
+    /// Запоминает удалённые серверные записи, чтобы синхронизация их не восстановила.
+    private func markDeleted(_ remoteID: String?) {
+        guard let remoteID else { return }
+        context.insert(DeletedRecord(remoteID: remoteID))
+    }
+
+    private func markDeleted(_ container: StorageContainer) {
+        container.items.forEach { markDeleted($0.remoteID) }
+        markDeleted(container.remoteID)
+    }
 
     private func validName(_ name: String) throws -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)

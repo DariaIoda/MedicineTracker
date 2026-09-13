@@ -16,6 +16,9 @@ struct InventoryHomeView: View {
     var body: some View {
         @Bindable var viewModel = viewModel
         List {
+            if !viewModel.isSearching && dependencies.sync.state != .idle {
+                SyncStatusRow(state: dependencies.sync.state) { dependencies.sync.syncOnLaunch() }
+            }
             if viewModel.isSearching {
                 searchResults
             } else if rooms.isEmpty {
@@ -174,7 +177,9 @@ struct InventoryHomeView: View {
     @ViewBuilder
     private var searchResults: some View {
         let results = viewModel.searchResults(in: rooms)
-        if results.isEmpty {
+        if results.isEmpty && viewModel.isSearchPending {
+            ProgressView().frame(maxWidth: .infinity)
+        } else if results.isEmpty {
             ContentUnavailableView.search(text: viewModel.searchText)
         } else {
             Section("Найдено: \(results.count)") {

@@ -7,6 +7,7 @@ struct ContainerCardView: View {
     @State private var viewModel: ContainerDetailViewModel
     @State private var isQRFullScreen = false
     @State private var editor: EditorRequest?
+    @State private var isExportPresented = false
 
     init(viewModel: ContainerDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -53,6 +54,20 @@ struct ContainerCardView: View {
                     Button("Изменить") { editor = .editContainer(container) }
                         .accessibilityIdentifier("editContainer")
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    Button {
+                        isExportPresented = true
+                    } label: {
+                        Label("Экспорт списка вещей", systemImage: "square.and.arrow.up")
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .accessibilityIdentifier("exportContainer")
+                }
+            }
+            .sheet(isPresented: $isExportPresented) {
+                ExportSheet(viewModel: ExportViewModel(containerID: container.id,
+                                                       repository: dependencies.repository,
+                                                       exporter: dependencies.exporter))
             }
             .sheet(isPresented: $isQRFullScreen) {
                 QRFullScreenView(image: viewModel.qrImage, title: viewModel.title, code: viewModel.code)

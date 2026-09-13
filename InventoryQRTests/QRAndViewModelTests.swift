@@ -82,9 +82,9 @@ final class ContainerDetailViewModelTests: XCTestCase {
         let viewModel = InventoryListViewModel(repository: repository, catalog: try ItemTypeCatalog())
         viewModel.searchText = "гирлянда"
         XCTAssertTrue(viewModel.isSearching)
-        XCTAssertEqual(viewModel.searchResults(in: repository.rooms()).first?.path, "Кладовая → Коробка «Новый год»")
-        viewModel.searchText = "инструмент"            // совпадение по категории из item_types.json
-        XCTAssertEqual(viewModel.searchResults(in: repository.rooms()).count, 3)
+        XCTAssertEqual(viewModel.results(for: "гирлянда", in: repository.rooms()).first?.path, "Кладовая → Коробка «Новый год»")
+        // совпадение по категории из item_types.json
+        XCTAssertEqual(viewModel.results(for: "инструмент", in: repository.rooms()).count, 3)
     }
 
     func testItemFormCreatesItemInChosenContainer() throws {

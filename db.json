@@ -1,0 +1,176 @@
+{
+  "rooms": [
+    {
+      "id": "room-1",
+      "name": "Гостиная",
+      "icon": "sofa"
+    },
+    {
+      "id": "room-2",
+      "name": "Кухня",
+      "icon": "fork.knife"
+    },
+    {
+      "id": "room-3",
+      "name": "Кладовая",
+      "icon": "archivebox"
+    },
+    {
+      "id": "room-4",
+      "name": "Гараж",
+      "icon": "car"
+    }
+  ],
+  "containers": [
+    {
+      "id": "cont-1",
+      "name": "Тумба под телевизором",
+      "code": "BOX-0001",
+      "room_id": "room-1"
+    },
+    {
+      "id": "cont-2",
+      "name": "Книжный шкаф",
+      "code": "BOX-0002",
+      "room_id": "room-1"
+    },
+    {
+      "id": "cont-3",
+      "name": "Верхний шкаф",
+      "code": "BOX-0003",
+      "room_id": "room-2"
+    },
+    {
+      "id": "cont-4",
+      "name": "Коробка «Инструменты»",
+      "code": "BOX-0004",
+      "room_id": "room-3"
+    },
+    {
+      "id": "cont-5",
+      "name": "Коробка «Новый год»",
+      "code": "BOX-0005",
+      "room_id": "room-3"
+    },
+    {
+      "id": "cont-6",
+      "name": "Стеллаж у стены",
+      "code": "BOX-0006",
+      "room_id": "room-4"
+    }
+  ],
+  "items": [
+    {
+      "id": "item-1",
+      "name": "HDMI-кабель 2 м",
+      "quantity": 3,
+      "type_id": "electronics",
+      "container_id": "cont-1",
+      "note": ""
+    },
+    {
+      "id": "item-2",
+      "name": "Пульт от кондиционера",
+      "quantity": 1,
+      "type_id": "electronics",
+      "container_id": "cont-1",
+      "note": ""
+    },
+    {
+      "id": "item-3",
+      "name": "Батарейки AA",
+      "quantity": 12,
+      "type_id": "consumables",
+      "container_id": "cont-1",
+      "note": "Срок годности до 2029 г."
+    },
+    {
+      "id": "item-4",
+      "name": "Фотоальбом 2019",
+      "quantity": 1,
+      "type_id": "documents",
+      "container_id": "cont-2",
+      "note": ""
+    },
+    {
+      "id": "item-5",
+      "name": "Настольная игра «Каркассон»",
+      "quantity": 1,
+      "type_id": "hobby",
+      "container_id": "cont-2",
+      "note": ""
+    },
+    {
+      "id": "item-6",
+      "name": "Сервиз чайный",
+      "quantity": 6,
+      "type_id": "dishes",
+      "container_id": "cont-3",
+      "note": "Подарок, не использовать"
+    },
+    {
+      "id": "item-7",
+      "name": "Блендер",
+      "quantity": 1,
+      "type_id": "appliances",
+      "container_id": "cont-3",
+      "note": ""
+    },
+    {
+      "id": "item-8",
+      "name": "Шуруповёрт",
+      "quantity": 1,
+      "type_id": "tools",
+      "container_id": "cont-4",
+      "note": "Зарядка в том же кейсе"
+    },
+    {
+      "id": "item-9",
+      "name": "Набор отвёрток",
+      "quantity": 1,
+      "type_id": "tools",
+      "container_id": "cont-4",
+      "note": ""
+    },
+    {
+      "id": "item-10",
+      "name": "Рулетка 5 м",
+      "quantity": 1,
+      "type_id": "tools",
+      "container_id": "cont-4",
+      "note": ""
+    },
+    {
+      "id": "item-11",
+      "name": "Гирлянда светодиодная",
+      "quantity": 2,
+      "type_id": "decor",
+      "container_id": "cont-5",
+      "note": ""
+    },
+    {
+      "id": "item-12",
+      "name": "Ёлочные игрушки",
+      "quantity": 24,
+      "type_id": "decor",
+      "container_id": "cont-5",
+      "note": "Хрупкое"
+    },
+    {
+      "id": "item-13",
+      "name": "Зимние шины",
+      "quantity": 4,
+      "type_id": "auto",
+      "container_id": "cont-6",
+      "note": "R16"
+    },
+    {
+      "id": "item-14",
+      "name": "Насос автомобильный",
+      "quantity": 1,
+      "type_id": "auto",
+      "container_id": "cont-6",
+      "note": ""
+    }
+  ]
+}

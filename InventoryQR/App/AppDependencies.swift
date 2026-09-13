@@ -9,15 +9,20 @@ final class AppDependencies {
     let catalog: ItemTypeCatalog
     let qrGenerator: QRCodeGenerating
     let qrDecoder: QRCodeDecoding
+    let sync: InventorySyncService
+    let exporter: ContainerExporter
 
     init(repository: InventoryRepository,
          catalog: ItemTypeCatalog,
+         sync: InventorySyncService,
          qrGenerator: QRCodeGenerating = CoreImageQRCodeGenerator(),
          qrDecoder: QRCodeDecoding = VisionQRCodeDecoder()) {
         self.repository = repository
         self.catalog = catalog
+        self.sync = sync
         self.qrGenerator = qrGenerator
         self.qrDecoder = qrDecoder
+        self.exporter = ContainerExporter(catalog: catalog)
     }
 
     convenience init(context: ModelContext) {
@@ -27,7 +32,15 @@ final class AppDependencies {
         } catch {
             fatalError("Не удалось прочитать классификатор item_types.json: \(error)")
         }
-        self.init(repository: SwiftDataInventoryRepository(context: context), catalog: catalog)
+        let api: InventoryAPI
+        if let override = ProcessInfo.processInfo.environment["INVENTORY_API_URL"], let url = URL(string: override) {
+            api = InventoryAPIClient(baseURL: url)
+        } else {
+            api = InventoryAPIClient()
+        }
+        self.init(repository: SwiftDataInventoryRepository(context: context),
+                  catalog: catalog,
+                  sync: InventorySyncService(api: api, context: context))
     }
 
     /// Использовать ли mock-сканер вместо камеры (симулятор или явный аргумент запуска).

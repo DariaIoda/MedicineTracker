@@ -8,22 +8,39 @@ final class InventoryListViewModel {
     private let repository: InventoryRepository
     private let catalog: ItemTypeCatalog
 
-    var searchText = ""
+    /// Текст поля поиска; каждое изменение отправляется в издатель Combine.
+    var searchText = "" {
+        didSet { search.send(searchText) }
+    }
     var expandedContainers: Set<UUID> = []
     var isScannerPresented = false
     var editor: EditorRequest?
     var errorMessage: String?
 
-    init(repository: InventoryRepository, catalog: ItemTypeCatalog) {
+    /// Запрос применяется после паузы в наборе (debounce) и без повторов (removeDuplicates).
+    let search: DebouncedSearch
+
+    init(repository: InventoryRepository, catalog: ItemTypeCatalog, search: DebouncedSearch = DebouncedSearch()) {
         self.repository = repository
         self.catalog = catalog
+        self.search = search
     }
 
     var isSearching: Bool { !searchText.trimmingCharacters(in: .whitespaces).isEmpty }
 
-    /// Поиск по названию, заметке и категории классификатора.
+    /// Введённый текст ещё не дошёл до поиска (идёт задержка ввода).
+    var isSearchPending: Bool {
+        search.appliedQuery != searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Результаты для запроса, прошедшего через debounce.
     func searchResults(in rooms: [Room]) -> [Item] {
-        let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        results(for: search.appliedQuery, in: rooms)
+    }
+
+    /// Поиск по названию, заметке и категории классификатора.
+    func results(for query: String, in rooms: [Room]) -> [Item] {
+        let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return [] }
         let all = rooms.flatMap(\.containers).flatMap(\.items)
         return all
