@@ -1,12 +1,14 @@
+import SwiftData
 import SwiftUI
 
-/// Главный экран: иерархия хранения и текстовый поиск по вещам.
+/// Главный экран: иерархия хранения из SwiftData, поиск и управление записями.
 struct InventoryHomeView: View {
     @Environment(AppDependencies.self) private var dependencies
+    @Query(sort: \Room.name) private var rooms: [Room]
     @State private var viewModel: InventoryListViewModel
-    let onOpenContainer: (StorageContainer.ID) -> Void
+    let onOpenContainer: (UUID) -> Void
 
-    init(viewModel: InventoryListViewModel, onOpenContainer: @escaping (StorageContainer.ID) -> Void) {
+    init(viewModel: InventoryListViewModel, onOpenContainer: @escaping (UUID) -> Void) {
         _viewModel = State(initialValue: viewModel)
         self.onOpenContainer = onOpenContainer
     }
@@ -16,21 +18,12 @@ struct InventoryHomeView: View {
         List {
             if viewModel.isSearching {
                 searchResults
+            } else if rooms.isEmpty {
+                emptyState
             } else {
                 summarySection
-                ForEach(viewModel.rooms) { room in
-                    Section {
-                        NavigationLink(value: Route.room(room.id)) {
-                            Label("Открыть комнату", systemImage: "arrow.right.circle")
-                                .foregroundStyle(.tint)
-                        }
-                        .accessibilityIdentifier("openRoom_\(room.name)")
-                        ForEach(room.containers) { container in
-                            containerGroup(container)
-                        }
-                    } header: {
-                        RoomHeader(room: room)
-                    }
+                ForEach(rooms) { room in
+                    roomSection(room)
                 }
             }
         }
@@ -40,6 +33,9 @@ struct InventoryHomeView: View {
                     placement: .navigationBarDrawer(displayMode: .always),
                     prompt: "Поиск вещи")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                addMenu
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     viewModel.isScannerPresented = true
@@ -52,16 +48,91 @@ struct InventoryHomeView: View {
         .sheet(isPresented: $viewModel.isScannerPresented) {
             ScannerScreen(dependencies: dependencies, onOpenContainer: onOpenContainer)
         }
+        .sheet(item: $viewModel.editor) { request in
+            EditorSheet(request: request)
+        }
+        .alert("Ошибка", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
+    }
+
+    private var addMenu: some View {
+        Menu {
+            Button { viewModel.editor = .newRoom } label: {
+                Label("Комната", systemImage: "house")
+            }
+            Button { viewModel.editor = .newContainer(room: nil) } label: {
+                Label("Контейнер", systemImage: "shippingbox")
+            }
+            .disabled(rooms.isEmpty)
+            Button { viewModel.editor = .newItem(container: nil) } label: {
+                Label("Вещь", systemImage: "cube")
+            }
+            .disabled(rooms.allSatisfy { $0.containers.isEmpty })
+        } label: {
+            Label("Добавить", systemImage: "plus")
+        }
+        .accessibilityIdentifier("addMenu")
+    }
+
+    private var emptyState: some View {
+        ContentUnavailableView {
+            Label("Инвентарь пуст", systemImage: "shippingbox")
+        } description: {
+            Text("Добавьте комнату, затем контейнеры и вещи в них.")
+        } actions: {
+            Button("Добавить комнату") { viewModel.editor = .newRoom }
+                .buttonStyle(.borderedProminent)
+        }
+        .listRowBackground(Color.clear)
     }
 
     private var summarySection: some View {
-        Section {
+        let containers = rooms.flatMap(\.containers)
+        return Section {
             HStack(spacing: 12) {
-                StatBadge(value: viewModel.roomCount, title: "комнат", icon: "house")
-                StatBadge(value: viewModel.containerCount, title: "контейнеров", icon: "shippingbox")
-                StatBadge(value: viewModel.itemCount, title: "вещей", icon: "cube")
+                StatBadge(value: rooms.count, title: "комнат", icon: "house")
+                StatBadge(value: containers.count, title: "контейнеров", icon: "shippingbox")
+                StatBadge(value: containers.reduce(0) { $0 + $1.items.count }, title: "вещей", icon: "cube")
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        }
+    }
+
+    private func roomSection(_ room: Room) -> some View {
+        Section {
+            NavigationLink(value: Route.room(room.id)) {
+                Label("Открыть комнату", systemImage: "arrow.right.circle")
+                    .foregroundStyle(.tint)
+            }
+            .accessibilityIdentifier("openRoom_\(room.name)")
+            ForEach(room.sortedContainers) { container in
+                containerGroup(container)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { viewModel.delete(container) } label: {
+                            Label("Удалить", systemImage: "trash")
+                        }
+                        Button { viewModel.editor = .editContainer(container) } label: {
+                            Label("Изменить", systemImage: "pencil")
+                        }
+                        .tint(.orange)
+                    }
+            }
+        } header: {
+            RoomHeader(room: room)
+                .contextMenu {
+                    Button { viewModel.editor = .editRoom(room) } label: {
+                        Label("Изменить комнату", systemImage: "pencil")
+                    }
+                    Button(role: .destructive) { viewModel.delete(room) } label: {
+                        Label("Удалить комнату", systemImage: "trash")
+                    }
+                }
         }
     }
 
@@ -70,10 +141,25 @@ struct InventoryHomeView: View {
             get: { viewModel.isExpanded(container.id) },
             set: { viewModel.setExpanded(container.id, $0) }
         )) {
-            ForEach(container.items) { item in
+            ForEach(container.sortedItems) { item in
                 NavigationLink(value: Route.item(item.id)) {
-                    ItemRow(item: item)
+                    ItemRow(item: item, type: dependencies.catalog.type(id: item.typeID))
                 }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) { viewModel.delete(item) } label: {
+                        Label("Удалить", systemImage: "trash")
+                    }
+                    Button { viewModel.editor = .editItem(item) } label: {
+                        Label("Изменить", systemImage: "pencil")
+                    }
+                    .tint(.orange)
+                }
+            }
+            Button {
+                viewModel.editor = .newItem(container: container)
+            } label: {
+                Label("Добавить вещь", systemImage: "plus.circle")
+                    .font(.subheadline)
             }
             NavigationLink(value: Route.container(container.id)) {
                 Label("Карточка контейнера", systemImage: "list.bullet.rectangle")
@@ -87,17 +173,44 @@ struct InventoryHomeView: View {
 
     @ViewBuilder
     private var searchResults: some View {
-        let results = viewModel.searchResults
+        let results = viewModel.searchResults(in: rooms)
         if results.isEmpty {
             ContentUnavailableView.search(text: viewModel.searchText)
         } else {
             Section("Найдено: \(results.count)") {
-                ForEach(results) { location in
-                    NavigationLink(value: Route.item(location.item.id)) {
-                        SearchResultRow(location: location, query: viewModel.searchText)
+                ForEach(results) { item in
+                    NavigationLink(value: Route.item(item.id)) {
+                        SearchResultRow(item: item, type: dependencies.catalog.type(id: item.typeID),
+                                        query: viewModel.searchText)
                     }
                 }
             }
+        }
+    }
+}
+
+/// Лист с нужной формой редактирования.
+struct EditorSheet: View {
+    @Environment(AppDependencies.self) private var dependencies
+    let request: EditorRequest
+
+    var body: some View {
+        switch request {
+        case .newRoom:
+            RoomFormView(viewModel: RoomFormViewModel(repository: dependencies.repository))
+        case .editRoom(let room):
+            RoomFormView(viewModel: RoomFormViewModel(repository: dependencies.repository, room: room))
+        case .newContainer(let room):
+            ContainerFormView(viewModel: ContainerFormViewModel(repository: dependencies.repository, room: room))
+        case .editContainer(let container):
+            ContainerFormView(viewModel: ContainerFormViewModel(repository: dependencies.repository,
+                                                                container: container))
+        case .newItem(let container):
+            ItemFormView(viewModel: ItemFormViewModel(repository: dependencies.repository,
+                                                      catalog: dependencies.catalog, container: container))
+        case .editItem(let item):
+            ItemFormView(viewModel: ItemFormViewModel(repository: dependencies.repository,
+                                                      catalog: dependencies.catalog, item: item))
         }
     }
 }

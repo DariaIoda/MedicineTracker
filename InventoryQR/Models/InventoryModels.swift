@@ -1,72 +1,104 @@
 import Foundation
-
-/// Вещь, хранящаяся в контейнере.
-struct Item: Identifiable, Hashable {
-    let id: UUID
-    var name: String
-    var quantity: Int
-    var category: String
-    var icon: String
-    var note: String
-
-    init(id: UUID = UUID(), name: String, quantity: Int = 1,
-         category: String, icon: String, note: String = "") {
-        self.id = id
-        self.name = name
-        self.quantity = quantity
-        self.category = category
-        self.icon = icon
-        self.note = note
-    }
-}
-
-/// Контейнер (коробка, ящик, полка) внутри комнаты.
-struct StorageContainer: Identifiable, Hashable {
-    let id: UUID
-    var name: String
-    var code: String
-    var items: [Item]
-
-    init(id: UUID = UUID(), name: String, code: String, items: [Item] = []) {
-        self.id = id
-        self.name = name
-        self.code = code
-        self.items = items
-    }
-
-    var totalQuantity: Int { items.reduce(0) { $0 + $1.quantity } }
-}
+import SwiftData
 
 /// Комната — верхний уровень структуры хранения.
-struct Room: Identifiable, Hashable {
-    let id: UUID
+@Model
+final class Room {
+    @Attribute(.unique) var id: UUID
     var name: String
     var icon: String
-    var containers: [StorageContainer]
+    var createdAt: Date
+    /// Идентификатор записи на сервере; nil — комната создана пользователем.
+    var remoteID: String?
 
-    init(id: UUID = UUID(), name: String, icon: String, containers: [StorageContainer] = []) {
+    @Relationship(deleteRule: .cascade, inverse: \StorageContainer.room)
+    var containers: [StorageContainer] = []
+
+    init(id: UUID = UUID(), name: String, icon: String = "house",
+         remoteID: String? = nil, createdAt: Date = .now) {
         self.id = id
         self.name = name
         self.icon = icon
-        self.containers = containers
+        self.remoteID = remoteID
+        self.createdAt = createdAt
+    }
+
+    var sortedContainers: [StorageContainer] {
+        containers.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
     }
 
     var itemCount: Int { containers.reduce(0) { $0 + $1.items.count } }
 }
 
-/// Результат поиска: вещь вместе с точным местоположением.
-struct ItemLocation: Identifiable, Hashable {
-    let room: Room
-    let container: StorageContainer
-    let item: Item
+/// Контейнер (коробка, ящик, полка), промаркированный QR-кодом.
+@Model
+final class StorageContainer {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    @Attribute(.unique) var code: String
+    var createdAt: Date
+    var remoteID: String?
 
-    var id: UUID { item.id }
-    var path: String { "\(room.name) → \(container.name)" }
+    var room: Room?
+
+    @Relationship(deleteRule: .cascade, inverse: \Item.container)
+    var items: [Item] = []
+
+    init(id: UUID = UUID(), name: String, code: String, room: Room? = nil,
+         remoteID: String? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.name = name
+        self.code = code
+        self.room = room
+        self.remoteID = remoteID
+        self.createdAt = createdAt
+    }
+
+    var sortedItems: [Item] {
+        items.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+    }
+
+    var totalQuantity: Int { items.reduce(0) { $0 + $1.quantity } }
+}
+
+/// Вещь — материальная ценность внутри контейнера.
+@Model
+final class Item {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    var quantity: Int
+    /// Ссылка на тип из статического классификатора item_types.json.
+    var typeID: String
+    var note: String
+    var createdAt: Date
+    var remoteID: String?
+
+    var container: StorageContainer?
+
+    init(id: UUID = UUID(), name: String, quantity: Int = 1, typeID: String = "other",
+         note: String = "", container: StorageContainer? = nil,
+         remoteID: String? = nil, createdAt: Date = .now) {
+        self.id = id
+        self.name = name
+        self.quantity = quantity
+        self.typeID = typeID
+        self.note = note
+        self.container = container
+        self.remoteID = remoteID
+        self.createdAt = createdAt
+    }
+
+    /// Точное местоположение вещи.
+    var path: String {
+        let roomName = container?.room?.name ?? "Без комнаты"
+        let containerName = container?.name ?? "Без контейнера"
+        return "\(roomName) → \(containerName)"
+    }
 }
 
 /// Маршруты навигации приложения.
 enum Route: Hashable {
-    case room(Room.ID)
-    case container(StorageContainer.ID)
-    case item(Item.ID)
+    case room(UUID)
+    case container(UUID)
+    case item(UUID)
 }

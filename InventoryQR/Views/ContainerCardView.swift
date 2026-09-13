@@ -1,17 +1,19 @@
 import SwiftUI
 import UIKit
 
-/// Карточка контейнера: перечень материальных ценностей и QR-код маркировки.
+/// Карточка контейнера: перечень материальных ценностей, QR-код маркировки и управление содержимым.
 struct ContainerCardView: View {
+    @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel: ContainerDetailViewModel
     @State private var isQRFullScreen = false
+    @State private var editor: EditorRequest?
 
     init(viewModel: ContainerDetailViewModel) {
         _viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
-        if viewModel.location != nil {
+        if let container = viewModel.container {
             List {
                 Section {
                     qrBlock
@@ -28,16 +30,34 @@ struct ContainerCardView: View {
                     }
                     ForEach(viewModel.items) { item in
                         NavigationLink(value: Route.item(item.id)) {
-                            ItemRow(item: item)
+                            ItemRow(item: item, type: dependencies.catalog.type(id: item.typeID))
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) { viewModel.delete(item) } label: {
+                                Label("Удалить", systemImage: "trash")
+                            }
                         }
                     }
+                    Button {
+                        editor = .newItem(container: container)
+                    } label: {
+                        Label("Добавить вещь", systemImage: "plus.circle")
+                    }
+                    .accessibilityIdentifier("addItemToContainer")
                 }
             }
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Изменить") { editor = .editContainer(container) }
+                        .accessibilityIdentifier("editContainer")
+                }
+            }
             .sheet(isPresented: $isQRFullScreen) {
                 QRFullScreenView(image: viewModel.qrImage, title: viewModel.title, code: viewModel.code)
             }
+            .sheet(item: $editor) { EditorSheet(request: $0) }
         } else {
             ContentUnavailableView("Контейнер не найден", systemImage: "shippingbox")
         }
@@ -59,10 +79,6 @@ struct ContainerCardView: View {
             Text(viewModel.payload)
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
-            Text("Нажмите на код, чтобы открыть его для печати или сканирования")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)

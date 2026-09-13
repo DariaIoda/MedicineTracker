@@ -9,7 +9,8 @@ struct RootView: View {
     var body: some View {
         NavigationStack(path: $path) {
             InventoryHomeView(
-                viewModel: InventoryListViewModel(repository: dependencies.repository),
+                viewModel: InventoryListViewModel(repository: dependencies.repository,
+                                                  catalog: dependencies.catalog),
                 onOpenContainer: { id in path.append(Route.container(id)) }
             )
             .navigationDestination(for: Route.self) { route in
@@ -22,14 +23,11 @@ struct RootView: View {
                         repository: dependencies.repository,
                         generator: dependencies.qrGenerator))
                 case .item(let id):
-                    ItemDetailView(viewModel: ItemDetailViewModel(itemID: id, repository: dependencies.repository))
+                    ItemDetailView(viewModel: ItemDetailViewModel(itemID: id,
+                                                                  repository: dependencies.repository,
+                                                                  catalog: dependencies.catalog))
                 }
             }
         }
     }
-}
-
-#Preview {
-    RootView()
-        .environment(AppDependencies())
 }

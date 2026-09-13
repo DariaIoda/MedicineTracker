@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import InventoryQR
 
@@ -39,20 +40,19 @@ final class QRGenerationTests: XCTestCase {
     }
 }
 
-final class ScannerViewModelTests: XCTestCase {
-    func testKnownContainerIsFound() {
-        let viewModel = ScannerViewModel(repository: InMemoryInventoryRepository())
-        viewModel.handle(scannedValue: "INVQR:1:BOX-0004")
-        guard case .found(let location) = viewModel.state else {
-            return XCTFail("Ожидался найденный контейнер")
-        }
-        XCTAssertEqual(location.room.name, "Кладовая")
-        XCTAssertEqual(viewModel.foundItems.map(\.name), ["Набор отвёрток", "Рулетка 5 м", "Шуруповёрт"])
-        XCTAssertTrue(viewModel.isFound)
-    }
+/// Репозиторий SwiftData в памяти с тестовым набором данных.
+private func makeSampleRepository() throws -> SwiftDataInventoryRepository {
+    let schema = Schema([Room.self, StorageContainer.self, Item.self])
+    let container = try ModelContainer(for: schema,
+                                       configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true))
+    let context = ModelContext(container)
+    SampleInventory.insert(into: context)
+    return SwiftDataInventoryRepository(context: context)
+}
 
-    func testUnknownAndForeignCodes() {
-        let viewModel = ScannerViewModel(repository: InMemoryInventoryRepository())
+final class ScannerViewModelTests: XCTestCase {
+    func testUnknownAndForeignCodes() throws {
+        let viewModel = ScannerViewModel(repository: try makeSampleRepository())
         viewModel.handle(scannedValue: "INVQR:1:BOX-9999")
         XCTAssertEqual(viewModel.state, .unknownContainer(code: "BOX-9999"))
         viewModel.handle(scannedValue: "https://www.gstu.by")
@@ -64,9 +64,9 @@ final class ScannerViewModelTests: XCTestCase {
 
 final class ContainerDetailViewModelTests: XCTestCase {
     func testContainerCardData() throws {
-        let repository = InMemoryInventoryRepository()
+        let repository = try makeSampleRepository()
         let container = try XCTUnwrap(repository.container(code: "BOX-0005"))
-        let viewModel = ContainerDetailViewModel(containerID: container.container.id,
+        let viewModel = ContainerDetailViewModel(containerID: container.id,
                                                  repository: repository,
                                                  generator: CoreImageQRCodeGenerator())
         XCTAssertEqual(viewModel.roomName, "Кладовая")
@@ -77,13 +77,26 @@ final class ContainerDetailViewModelTests: XCTestCase {
         XCTAssertTrue(first === viewModel.qrImage, "QR-код должен кэшироваться")
     }
 
-    func testListViewModelSearchAndCounters() {
-        let viewModel = InventoryListViewModel(repository: InMemoryInventoryRepository())
-        XCTAssertEqual(viewModel.roomCount, 4)
-        XCTAssertEqual(viewModel.containerCount, 6)
-        XCTAssertEqual(viewModel.itemCount, 14)
+    func testListViewModelSearchUsesClassifier() throws {
+        let repository = try makeSampleRepository()
+        let viewModel = InventoryListViewModel(repository: repository, catalog: try ItemTypeCatalog())
         viewModel.searchText = "гирлянда"
         XCTAssertTrue(viewModel.isSearching)
-        XCTAssertEqual(viewModel.searchResults.first?.path, "Кладовая → Коробка «Новый год»")
+        XCTAssertEqual(viewModel.searchResults(in: repository.rooms()).first?.path, "Кладовая → Коробка «Новый год»")
+        viewModel.searchText = "инструмент"            // совпадение по категории из item_types.json
+        XCTAssertEqual(viewModel.searchResults(in: repository.rooms()).count, 3)
+    }
+
+    func testItemFormCreatesItemInChosenContainer() throws {
+        let repository = try makeSampleRepository()
+        let box = try XCTUnwrap(repository.container(code: "BOX-0004"))
+        let form = ItemFormViewModel(repository: repository, catalog: try ItemTypeCatalog(), container: box)
+        XCTAssertFalse(form.canSave)
+        form.name = "Уровень строительный"
+        form.typeID = "tools"
+        form.quantity = 2
+        XCTAssertTrue(form.save())
+        XCTAssertEqual(box.items.count, 4)
+        XCTAssertEqual(repository.search("уровень").first?.path, "Кладовая → Коробка «Инструменты»")
     }
 }

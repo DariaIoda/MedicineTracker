@@ -1,69 +1,188 @@
 import Foundation
-import Observation
+import SwiftData
 
-/// Контракт слоя данных. ViewModel зависят только от протокола,
-/// поэтому реализацию (память, база данных, сеть) можно подменить.
+/// Ошибки операций с инвентарём.
+enum InventoryError: LocalizedError, Equatable {
+    case emptyName
+    case invalidQuantity
+    case duplicateCode(String)
+    case notFound
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyName: return "Название не может быть пустым"
+        case .invalidQuantity: return "Количество должно быть больше нуля"
+        case .duplicateCode(let code): return "Код \(code) уже используется"
+        case .notFound: return "Запись не найдена"
+        }
+    }
+}
+
+/// Контракт слоя данных: чтение, поиск и полный цикл CRUD.
 protocol InventoryRepository: AnyObject {
-    var rooms: [Room] { get }
-    func room(id: Room.ID) -> Room?
-    func container(id: StorageContainer.ID) -> ContainerLocation?
-    func container(code: String) -> ContainerLocation?
-    func location(ofItem id: Item.ID) -> ItemLocation?
-    func search(_ query: String) -> [ItemLocation]
+    func rooms() -> [Room]
+    func room(id: UUID) -> Room?
+    func container(id: UUID) -> StorageContainer?
+    func container(code: String) -> StorageContainer?
+    func item(id: UUID) -> Item?
+    func search(_ query: String) -> [Item]
+
+    @discardableResult func addRoom(name: String, icon: String) throws -> Room
+    func updateRoom(_ room: Room, name: String, icon: String) throws
+    func deleteRoom(_ room: Room) throws
+
+    @discardableResult func addContainer(name: String, to room: Room) throws -> StorageContainer
+    func updateContainer(_ container: StorageContainer, name: String, room: Room) throws
+    func deleteContainer(_ container: StorageContainer) throws
+
+    @discardableResult func addItem(name: String, quantity: Int, typeID: String, note: String,
+                                    to container: StorageContainer) throws -> Item
+    func updateItem(_ item: Item, name: String, quantity: Int, typeID: String, note: String,
+                    container: StorageContainer) throws
+    func deleteItem(_ item: Item) throws
 }
 
-/// Контейнер вместе с комнатой, в которой он находится.
-struct ContainerLocation: Hashable {
-    let room: Room
-    let container: StorageContainer
-}
+/// Реализация репозитория поверх SwiftData (ModelContext).
+final class SwiftDataInventoryRepository: InventoryRepository {
+    let context: ModelContext
 
-/// Реализация репозитория в оперативной памяти.
-@Observable
-final class InMemoryInventoryRepository: InventoryRepository {
-    private(set) var rooms: [Room]
-
-    init(rooms: [Room] = SampleInventory.rooms) {
-        self.rooms = rooms
+    init(context: ModelContext) {
+        self.context = context
     }
 
-    func room(id: Room.ID) -> Room? {
-        rooms.first { $0.id == id }
+    // MARK: чтение
+
+    func rooms() -> [Room] {
+        let descriptor = FetchDescriptor<Room>(sortBy: [SortDescriptor(\.name)])
+        return (try? context.fetch(descriptor)) ?? []
     }
 
-    func container(id: StorageContainer.ID) -> ContainerLocation? {
-        allContainers.first { $0.container.id == id }
+    func room(id: UUID) -> Room? {
+        var descriptor = FetchDescriptor<Room>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
     }
 
-    func container(code: String) -> ContainerLocation? {
-        allContainers.first { $0.container.code.caseInsensitiveCompare(code) == .orderedSame }
+    func container(id: UUID) -> StorageContainer? {
+        var descriptor = FetchDescriptor<StorageContainer>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
     }
 
-    func location(ofItem id: Item.ID) -> ItemLocation? {
-        allLocations.first { $0.item.id == id }
+    func container(code: String) -> StorageContainer? {
+        let normalized = code.uppercased()
+        var descriptor = FetchDescriptor<StorageContainer>(predicate: #Predicate { $0.code == normalized })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
     }
 
-    func search(_ query: String) -> [ItemLocation] {
+    func item(id: UUID) -> Item? {
+        var descriptor = FetchDescriptor<Item>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    /// Поиск по названию и заметке без учёта регистра.
+    func search(_ query: String) -> [Item] {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return [] }
-        return allLocations
-            .filter {
-                $0.item.name.localizedCaseInsensitiveContains(text)
-                    || $0.item.category.localizedCaseInsensitiveContains(text)
-                    || $0.item.note.localizedCaseInsensitiveContains(text)
-            }
-            .sorted { $0.item.name.localizedCompare($1.item.name) == .orderedAscending }
+        let descriptor = FetchDescriptor<Item>(
+            predicate: #Predicate { item in
+                item.name.localizedStandardContains(text) || item.note.localizedStandardContains(text)
+            },
+            sortBy: [SortDescriptor(\.name)]
+        )
+        return (try? context.fetch(descriptor)) ?? []
     }
 
-    private var allContainers: [ContainerLocation] {
-        rooms.flatMap { room in room.containers.map { ContainerLocation(room: room, container: $0) } }
+    // MARK: комнаты
+
+    @discardableResult
+    func addRoom(name: String, icon: String) throws -> Room {
+        let room = Room(name: try validName(name), icon: icon)
+        context.insert(room)
+        try context.save()
+        return room
     }
 
-    private var allLocations: [ItemLocation] {
-        rooms.flatMap { room in
-            room.containers.flatMap { container in
-                container.items.map { ItemLocation(room: room, container: container, item: $0) }
-            }
+    func updateRoom(_ room: Room, name: String, icon: String) throws {
+        room.name = try validName(name)
+        room.icon = icon
+        try context.save()
+    }
+
+    func deleteRoom(_ room: Room) throws {
+        context.delete(room)          // контейнеры и вещи удаляются каскадно
+        try context.save()
+    }
+
+    // MARK: контейнеры
+
+    @discardableResult
+    func addContainer(name: String, to room: Room) throws -> StorageContainer {
+        let container = StorageContainer(name: try validName(name), code: nextContainerCode())
+        context.insert(container)
+        container.room = room
+        try context.save()
+        return container
+    }
+
+    func updateContainer(_ container: StorageContainer, name: String, room: Room) throws {
+        container.name = try validName(name)
+        container.room = room
+        try context.save()
+    }
+
+    func deleteContainer(_ container: StorageContainer) throws {
+        context.delete(container)     // вещи удаляются каскадно
+        try context.save()
+    }
+
+    // MARK: вещи
+
+    @discardableResult
+    func addItem(name: String, quantity: Int, typeID: String, note: String,
+                 to container: StorageContainer) throws -> Item {
+        guard quantity > 0 else { throw InventoryError.invalidQuantity }
+        let item = Item(name: try validName(name), quantity: quantity, typeID: typeID,
+                        note: note.trimmingCharacters(in: .whitespacesAndNewlines))
+        context.insert(item)
+        item.container = container
+        try context.save()
+        return item
+    }
+
+    func updateItem(_ item: Item, name: String, quantity: Int, typeID: String, note: String,
+                    container: StorageContainer) throws {
+        guard quantity > 0 else { throw InventoryError.invalidQuantity }
+        item.name = try validName(name)
+        item.quantity = quantity
+        item.typeID = typeID
+        item.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.container = container
+        try context.save()
+    }
+
+    func deleteItem(_ item: Item) throws {
+        context.delete(item)
+        try context.save()
+    }
+
+    // MARK: вспомогательное
+
+    private func validName(_ name: String) throws -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw InventoryError.emptyName }
+        return trimmed
+    }
+
+    /// Следующий свободный код маркировки вида BOX-0007.
+    func nextContainerCode() -> String {
+        let codes = ((try? context.fetch(FetchDescriptor<StorageContainer>())) ?? []).map(\.code)
+        let numbers = codes.compactMap { code -> Int? in
+            guard code.hasPrefix("BOX-") else { return nil }
+            return Int(code.dropFirst(4))
         }
+        return String(format: "BOX-%04d", (numbers.max() ?? 0) + 1)
     }
 }

@@ -1,41 +1,60 @@
 import Foundation
+import SwiftData
 
-/// Демонстрационный набор данных для первого этапа (интерфейс без хранилища).
+/// Тестовый набор данных. Подставляется только при запуске с аргументом -seedSampleData
+/// (UI-тесты); в обычном запуске база данных изначально пуста.
 enum SampleInventory {
-    static let rooms: [Room] = [
-        Room(name: "Гостиная", icon: "sofa", containers: [
-            StorageContainer(name: "Тумба под телевизором", code: "BOX-0001", items: [
-                Item(name: "HDMI-кабель 2 м", quantity: 3, category: "Электроника", icon: "cable.connector"),
-                Item(name: "Пульт от кондиционера", category: "Электроника", icon: "av.remote"),
-                Item(name: "Батарейки AA", quantity: 12, category: "Расходные материалы", icon: "battery.100")
+    static func insert(into context: ModelContext) {
+        let plan: [(String, String, [(String, String, [(String, Int, String)])])] = [
+            ("Гостиная", "sofa", [
+                ("Тумба под телевизором", "BOX-0001", [
+                    ("HDMI-кабель 2 м", 3, "electronics"),
+                    ("Пульт от кондиционера", 1, "electronics"),
+                    ("Батарейки AA", 12, "consumables")
+                ]),
+                ("Книжный шкаф", "BOX-0002", [
+                    ("Фотоальбом 2019", 1, "documents"),
+                    ("Настольная игра «Каркассон»", 1, "hobby")
+                ])
             ]),
-            StorageContainer(name: "Книжный шкаф", code: "BOX-0002", items: [
-                Item(name: "Фотоальбом 2019", category: "Документы и книги", icon: "book.closed"),
-                Item(name: "Настольная игра «Каркассон»", category: "Хобби", icon: "gamecontroller")
-            ])
-        ]),
-        Room(name: "Кухня", icon: "fork.knife", containers: [
-            StorageContainer(name: "Верхний шкаф", code: "BOX-0003", items: [
-                Item(name: "Сервиз чайный", quantity: 6, category: "Посуда", icon: "cup.and.saucer"),
-                Item(name: "Блендер", category: "Бытовая техника", icon: "blender")
-            ])
-        ]),
-        Room(name: "Кладовая", icon: "archivebox", containers: [
-            StorageContainer(name: "Коробка «Инструменты»", code: "BOX-0004", items: [
-                Item(name: "Шуруповёрт", category: "Инструменты", icon: "wrench.and.screwdriver"),
-                Item(name: "Набор отвёрток", quantity: 1, category: "Инструменты", icon: "screwdriver"),
-                Item(name: "Рулетка 5 м", category: "Инструменты", icon: "ruler")
+            ("Кухня", "fork.knife", [
+                ("Верхний шкаф", "BOX-0003", [
+                    ("Сервиз чайный", 6, "dishes"),
+                    ("Блендер", 1, "appliances")
+                ])
             ]),
-            StorageContainer(name: "Коробка «Новый год»", code: "BOX-0005", items: [
-                Item(name: "Гирлянда светодиодная", quantity: 2, category: "Декор", icon: "lightbulb"),
-                Item(name: "Ёлочные игрушки", quantity: 24, category: "Декор", icon: "sparkles")
+            ("Кладовая", "archivebox", [
+                ("Коробка «Инструменты»", "BOX-0004", [
+                    ("Шуруповёрт", 1, "tools"),
+                    ("Набор отвёрток", 1, "tools"),
+                    ("Рулетка 5 м", 1, "tools")
+                ]),
+                ("Коробка «Новый год»", "BOX-0005", [
+                    ("Гирлянда светодиодная", 2, "decor"),
+                    ("Ёлочные игрушки", 24, "decor")
+                ])
+            ]),
+            ("Гараж", "car", [
+                ("Стеллаж у стены", "BOX-0006", [
+                    ("Зимние шины", 4, "auto"),
+                    ("Насос автомобильный", 1, "auto")
+                ])
             ])
-        ]),
-        Room(name: "Гараж", icon: "car", containers: [
-            StorageContainer(name: "Стеллаж у стены", code: "BOX-0006", items: [
-                Item(name: "Зимние шины", quantity: 4, category: "Автотовары", icon: "car.circle"),
-                Item(name: "Насос автомобильный", category: "Автотовары", icon: "gauge.with.dots.needle.33percent")
-            ])
-        ])
-    ]
+        ]
+        for (roomName, icon, containers) in plan {
+            let room = Room(name: roomName, icon: icon)
+            context.insert(room)
+            for (containerName, code, items) in containers {
+                let container = StorageContainer(name: containerName, code: code)
+                context.insert(container)
+                container.room = room
+                for (itemName, quantity, typeID) in items {
+                    let item = Item(name: itemName, quantity: quantity, typeID: typeID)
+                    context.insert(item)
+                    item.container = container
+                }
+            }
+        }
+        try? context.save()
+    }
 }

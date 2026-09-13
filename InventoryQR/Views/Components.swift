@@ -47,15 +47,16 @@ struct ContainerRow: View {
 /// Строка вещи.
 struct ItemRow: View {
     let item: Item
+    let type: ItemType
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: item.icon)
+            Image(systemName: type.icon)
                 .foregroundStyle(.blue)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                Text(item.category)
+                Text(type.category)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -69,22 +70,23 @@ struct ItemRow: View {
 
 /// Результат поиска с указанием местоположения.
 struct SearchResultRow: View {
-    let location: ItemLocation
+    let item: Item
+    let type: ItemType
     let query: String
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: location.item.icon)
+            Image(systemName: type.icon)
                 .foregroundStyle(.blue)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 4) {
-                Text(highlighted(location.item.name))
-                Label(location.path, systemImage: "mappin.and.ellipse")
+                Text(highlighted(item.name))
+                Label(item.path, systemImage: "mappin.and.ellipse")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Text("× \(location.item.quantity)")
+            Text("× \(item.quantity)")
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
         }

@@ -6,9 +6,9 @@ struct ScannerScreen: View {
     @State private var viewModel: ScannerViewModel
 
     private let dependencies: AppDependencies
-    private let onOpenContainer: (StorageContainer.ID) -> Void
+    private let onOpenContainer: (UUID) -> Void
 
-    init(dependencies: AppDependencies, onOpenContainer: @escaping (StorageContainer.ID) -> Void) {
+    init(dependencies: AppDependencies, onOpenContainer: @escaping (UUID) -> Void) {
         self.dependencies = dependencies
         self.onOpenContainer = onOpenContainer
         _viewModel = State(initialValue: ScannerViewModel(repository: dependencies.repository))
@@ -20,8 +20,10 @@ struct ScannerScreen: View {
                 switch viewModel.state {
                 case .scanning:
                     scanner
-                case .found(let location):
-                    foundView(location)
+                case .found:
+                    if let container = viewModel.foundContainer {
+                        foundView(container)
+                    }
                 case .unknownContainer(let code):
                     messageView(title: "Контейнер не найден",
                                 text: "Код \(code) не зарегистрирован в инвентаре.",
@@ -67,13 +69,13 @@ struct ScannerScreen: View {
         }
     }
 
-    private func foundView(_ location: ContainerLocation) -> some View {
+    private func foundView(_ container: StorageContainer) -> some View {
         List {
             Section {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(location.container.name).font(.headline)
-                        Text("\(location.room.name) · \(location.container.code)")
+                        Text(container.name).font(.headline)
+                        Text("\(container.room?.name ?? "—") · \(container.code)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -85,13 +87,13 @@ struct ScannerScreen: View {
             }
             Section("Вещи в коробке: \(viewModel.foundItems.count)") {
                 ForEach(viewModel.foundItems) { item in
-                    ItemRow(item: item)
+                    ItemRow(item: item, type: dependencies.catalog.type(id: item.typeID))
                 }
             }
             Section {
                 Button {
                     dismiss()
-                    onOpenContainer(location.container.id)
+                    onOpenContainer(container.id)
                 } label: {
                     Label("Открыть карточку контейнера", systemImage: "list.bullet.rectangle")
                 }
