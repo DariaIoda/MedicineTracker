@@ -37,7 +37,8 @@ final class Lab2ScreenshotTests: XCTestCase {
         ScreenshotHelper.capture("lab2_04_scanner_mock", in: self)
 
         app.buttons["mock_label_box_0004"].tap()
-        app.staticTexts["Код распознан"].waitToAppear()
+        // заголовок секции списка отображается прописными буквами, поэтому ждём содержимое
+        app.staticTexts["Коробка «Инструменты»"].waitToAppear()
         app.staticTexts["Шуруповёрт"].waitToAppear()
         ScreenshotHelper.capture("lab2_05_scan_found", in: self)
 
