@@ -54,15 +54,20 @@ struct ContainerCardView: View {
                     Button("Изменить") { editor = .editContainer(container) }
                         .accessibilityIdentifier("editContainer")
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    Button {
-                        isExportPresented = true
-                    } label: {
-                        Label("Экспорт списка вещей", systemImage: "square.and.arrow.up")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .accessibilityIdentifier("exportContainer")
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    isExportPresented = true
+                } label: {
+                    Label("Экспорт списка вещей", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.bar)
+                .accessibilityIdentifier("exportContainer")
             }
             .sheet(isPresented: $isExportPresented) {
                 ExportSheet(viewModel: ExportViewModel(containerID: container.id,
