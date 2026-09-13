@@ -1,0 +1,39 @@
+name: iOS build & tests
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'lab*' ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: Build and test (iPhone + iPad simulators)
+        run: |
+          mkdir -p build
+          bash scripts/ci_test.sh
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: build/xcodebuild.log
