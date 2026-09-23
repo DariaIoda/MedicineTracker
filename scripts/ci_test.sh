@@ -52,7 +52,7 @@ case "${1:-}" in
     prepare_sim "$udid"
     xcodebuild test-without-building -project MedicineTracker.xcodeproj -scheme MedicineTracker \
       -destination "id=$udid" -derivedDataPath build/DerivedData \
-      -only-testing:InventoryQRTests \
+      -only-testing:MedicineTrackerTests \
       -test-timeouts-enabled YES -default-test-execution-time-allowance 120 \
       > build/unit.log 2>&1
     status=$?
