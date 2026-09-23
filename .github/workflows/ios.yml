@@ -36,7 +36,7 @@ jobs:
             -derivedDataPath build/AppBuild ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
             CODE_SIGNING_ALLOWED=NO > build/app.log 2>&1 || { tail -40 build/app.log; exit 1; }
           cd build/AppBuild/Build/Products/Release-iphonesimulator
-          lipo -info  MedicineTracker.app/ MedicineTracker
+          lipo -info  MedicineTracker/ MedicineTracker.App
           ditto -c -k --sequesterRsrc --keepParent  MedicineTracker.app "$GITHUB_WORKSPACE/ MedicineTracker-simulator.zip"
 
       - name: Upload simulator app
