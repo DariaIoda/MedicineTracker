@@ -65,7 +65,7 @@ case "${1:-}" in
     export TEST_RUNNER_SCREENSHOT_DIR="$PWD/screenshots/$2"
     xcodebuild test-without-building -project MedicineTracker.xcodeproj -scheme MedicineTracker \
       -destination "id=$udid" -derivedDataPath build/DerivedData \
-      -only-testing:InventoryQRUITests \
+      -only-testing:MedicineTrackerдрUITests \
       -test-timeouts-enabled YES -default-test-execution-time-allowance 300 \
       -resultBundlePath "build/UI-$2.xcresult" \
       > "build/ui-$2.log" 2>&1

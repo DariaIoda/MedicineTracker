@@ -9,12 +9,19 @@ targets:
     sources: [MedicineTracker]
     resources:
       - path: MedicineTracker/Resources
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 1.0
+
   MedicineTrackerTests:
     type: bundle.unit-test
     platform: iOS
     sources: [MedicineTrackerTests]
     dependencies:
       - target: MedicineTracker
+
   MedicineTrackerUITests:
     type: bundle.ui-testing
     platform: iOS
