@@ -40,7 +40,7 @@ case "${1:-}" in
     ;;
   build)
     udid=$(device_udid iphone)
-    xcodebuild build-for-testing -project InventoryQR.xcodeproj -scheme InventoryQR \
+    xcodebuild build-for-testing -project MedicineTracker.xcodeproj -scheme MedicineTracker \
       -destination "id=$udid" -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO \
       > build/build.log 2>&1
     status=$?
@@ -50,7 +50,7 @@ case "${1:-}" in
   unit)
     udid=$(device_udid iphone)
     prepare_sim "$udid"
-    xcodebuild test-without-building -project InventoryQR.xcodeproj -scheme InventoryQR \
+    xcodebuild test-without-building -project MedicineTracker.xcodeproj -scheme MedicineTracker \
       -destination "id=$udid" -derivedDataPath build/DerivedData \
       -only-testing:InventoryQRTests \
       -test-timeouts-enabled YES -default-test-execution-time-allowance 120 \
@@ -63,7 +63,7 @@ case "${1:-}" in
     udid=$(device_udid "$2")
     prepare_sim "$udid"
     export TEST_RUNNER_SCREENSHOT_DIR="$PWD/screenshots/$2"
-    xcodebuild test-without-building -project InventoryQR.xcodeproj -scheme InventoryQR \
+    xcodebuild test-without-building -project MedicineTracker.xcodeproj -scheme MedicineTracker \
       -destination "id=$udid" -derivedDataPath build/DerivedData \
       -only-testing:InventoryQRUITests \
       -test-timeouts-enabled YES -default-test-execution-time-allowance 300 \
