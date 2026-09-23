@@ -26,8 +26,7 @@ struct MedicineFormView: View {
                 }
                 Section("Инструкция") {
                     TextField("Дозировка (напр. 500 мг)", text: $dosage)
-                    TextField("Правила приема", text: $instructions, axis: .vertical)
-                        .lineLimit(3...6)
+                    TextField("Правила приема", text: $instructions, axis: .vertical).lineLimit(3...6)
                 }
             }
             .navigationTitle("Новое лекарство")
@@ -37,7 +36,7 @@ struct MedicineFormView: View {
                         try? repository.addMedicine(name: name, expiryDate: expiryDate, form: form, quantity: quantity, dosage: dosage, instructions: instructions)
                         dismiss()
                     }
-                    .disabled(name.isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Отмена") { dismiss() }

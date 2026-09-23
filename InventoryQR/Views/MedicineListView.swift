@@ -1,29 +1,25 @@
 import SwiftData
 import SwiftUI
 
-/// Главный экран получает данные из базы обёрткой свойства @Query. При изменении данных SwiftData автоматически обновляет список[cite: 5].
 struct MedicineListView: View {
+    @Environment(AppDependencies.self) private var dependencies
     @Query(sort: \Medicine.expiryDate, order: .forward) private var medicines: [Medicine]
+    
     @State private var selectedForm: String = "Все"
     @State private var isScannerPresented = false
+    @State private var isAddFormPresented = false
     
-    let forms = ["Все", "Таблетки", "Сиропы", "Капли", "Ампулы"]
+    let forms = ["Все", "Таблетки", "Сиропы", "Капли", "Ампулы", "Мази"]
     
     var filteredMedicines: [Medicine] {
-        if selectedForm == "Все" {
-            return medicines
-        } else {
-            return medicines.filter { $0.form == selectedForm }
-        }
+        selectedForm == "Все" ? medicines : medicines.filter { $0.form == selectedForm }
     }
     
     var body: some View {
         NavigationStack {
             VStack {
                 Picker("Форма выпуска", selection: $selectedForm) {
-                    ForEach(forms, id: \.self) { form in
-                        Text(form).tag(form)
-                    }
+                    ForEach(forms, id: \.self) { Text($0).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -33,7 +29,7 @@ struct MedicineListView: View {
                         ContentUnavailableView("Аптечка пуста", systemImage: "cross.case")
                     } else {
                         ForEach(filteredMedicines) { medicine in
-                            NavigationLink(destination: MedicineDetailView(medicine: medicine)) {
+                            NavigationLink(destination: MedicineDetailView(medicine: medicine, repository: dependencies.repository)) {
                                 MedicineRow(medicine: medicine)
                             }
                         }
@@ -42,17 +38,18 @@ struct MedicineListView: View {
             }
             .navigationTitle("Моя Аптечка")
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { isAddFormPresented = true }) { Label("Добавить", systemImage: "plus") }
+                }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        isScannerPresented = true
-                    } label: {
-                        Label("Сканировать", systemImage: "text.viewfinder")
-                    }
+                    Button(action: { isScannerPresented = true }) { Label("Сканировать", systemImage: "text.viewfinder") }
                 }
             }
             .sheet(isPresented: $isScannerPresented) {
-                // Подключение View для сканирования и передачи названия во ViewModel
-                Text("Экран сканирования (заглушка)")
+                ScannerScreen(dependencies: dependencies, isAddFormPresented: $isAddFormPresented)
+            }
+            .sheet(isPresented: $isAddFormPresented) {
+                MedicineFormView(repository: dependencies.repository)
             }
         }
     }
@@ -60,23 +57,17 @@ struct MedicineListView: View {
 
 struct MedicineRow: View {
     let medicine: Medicine
-    var isCritical: Bool {
-        medicine.expiryDate < Date().addingTimeInterval(30 * 24 * 60 * 60) // Менее 30 дней
-    }
+    var isCritical: Bool { medicine.expiryDate < Date().addingTimeInterval(30 * 24 * 60 * 60) }
     
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(medicine.name)
-                    .font(.headline)
-                Text(medicine.form)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text(medicine.name).font(.headline)
+                Text(medicine.form).font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
             VStack(alignment: .trailing) {
-                Text("Остаток: \(medicine.quantity)")
-                    .font(.subheadline)
+                Text("Остаток: \(medicine.quantity)").font(.subheadline)
                 Text(medicine.expiryDate.formatted(date: .numeric, time: .omitted))
                     .font(.caption)
                     .foregroundStyle(isCritical ? .red : .secondary)

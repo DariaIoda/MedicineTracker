@@ -18,9 +18,7 @@ struct VisionTextDecoder: TextDecoding {
         
         guard let observations = request.results else { return nil }
         
-        // Объединяем распознанный текст в одну строку
         let recognizedText = observations.compactMap { $0.topCandidates(1).first?.string }.joined(separator: " ")
-        
         return recognizedText.isEmpty ? nil : recognizedText
     }
 }

@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct MedicineDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let medicine: Medicine
+    let repository: MedicineRepository
     
     var body: some View {
         List {
@@ -14,8 +16,14 @@ struct MedicineDetailView: View {
             }
             
             Section("Правила приема и инструкция") {
-                Text(medicine.instructions)
-                    .font(.body)
+                Text(medicine.instructions).font(.body)
+            }
+            
+            Section {
+                Button("Удалить препарат", role: .destructive) {
+                    try? repository.deleteMedicine(medicine)
+                    dismiss()
+                }
             }
         }
         .navigationTitle("Детали")

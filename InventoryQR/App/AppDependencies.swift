@@ -2,53 +2,25 @@ import Foundation
 import Observation
 import SwiftData
 
-/// Контейнер зависимостей: единственное место, где выбираются конкретные реализации.
 @Observable
 final class AppDependencies {
-    let repository: InventoryRepository
-    let catalog: ItemTypeCatalog
-    let qrGenerator: QRCodeGenerating
-    let qrDecoder: QRCodeDecoding
-    let sync: InventorySyncService
-    let exporter: ContainerExporter
-
-    init(repository: InventoryRepository,
-         catalog: ItemTypeCatalog,
-         sync: InventorySyncService,
-         qrGenerator: QRCodeGenerating = CoreImageQRCodeGenerator(),
-         qrDecoder: QRCodeDecoding = VisionQRCodeDecoder()) {
+    let repository: MedicineRepository
+    let catalog: InteractionCatalog
+    let textDecoder: TextDecoding
+    
+    init(repository: MedicineRepository, catalog: InteractionCatalog, textDecoder: TextDecoding = VisionTextDecoder()) {
         self.repository = repository
         self.catalog = catalog
-        self.sync = sync
-        self.qrGenerator = qrGenerator
-        self.qrDecoder = qrDecoder
-        self.exporter = ContainerExporter(catalog: catalog)
+        self.textDecoder = textDecoder
     }
-
+    
     convenience init(context: ModelContext) {
-        let catalog: ItemTypeCatalog
+        let catalog: InteractionCatalog
         do {
-            catalog = try ItemTypeCatalog()
+            catalog = try InteractionCatalog()
         } catch {
-            fatalError("Не удалось прочитать классификатор item_types.json: \(error)")
+            fatalError("Не удалось прочитать файл interactions.json: \(error)")
         }
-        let api: InventoryAPI
-        if let override = ProcessInfo.processInfo.environment["INVENTORY_API_URL"], let url = URL(string: override) {
-            api = InventoryAPIClient(baseURL: url)
-        } else {
-            api = InventoryAPIClient()
-        }
-        self.init(repository: SwiftDataInventoryRepository(context: context),
-                  catalog: catalog,
-                  sync: InventorySyncService(api: api, context: context))
-    }
-
-    /// Использовать ли mock-сканер вместо камеры (симулятор или явный аргумент запуска).
-    var usesMockScanner: Bool {
-        #if targetEnvironment(simulator)
-        return true
-        #else
-        return ProcessInfo.processInfo.arguments.contains("-mockScanner")
-        #endif
+        self.init(repository: SwiftDataMedicineRepository(context: context), catalog: catalog)
     }
 }
