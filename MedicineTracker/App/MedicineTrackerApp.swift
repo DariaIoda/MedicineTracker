@@ -7,12 +7,22 @@ struct MedicineTrackerApp: App {
     @State private var dependencies: AppDependencies
 
     init() {
-        let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        if !FileManager.default.fileExists(atPath: appSupportDir.path) {
-            try? FileManager.default.createDirectory(at: appSupportDir, withIntermediateDirectories: true, attributes: nil)
+        // Читаем аргументы запуска (чтобы понять, запущен ли UI-тест)
+        let arguments = ProcessInfo.processInfo.arguments
+        let inMemory = arguments.contains("-uiTesting")
+        
+        // Принудительно создаем папку Application Support только если это физическая БД
+        if !inMemory {
+            let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            if !FileManager.default.fileExists(atPath: appSupportDir.path) {
+                try? FileManager.default.createDirectory(at: appSupportDir, withIntermediateDirectories: true, attributes: nil)
+            }
         }
+
         let schema = Schema([Medicine.self])
-        let configuration = ModelConfiguration("MedicineTracker", schema: schema)
+        // Передаем флаг inMemory в конфигурацию
+        let configuration = ModelConfiguration("MedicineTracker", schema: schema, isStoredInMemoryOnly: inMemory)
+        
         do {
             modelContainer = try ModelContainer(for: schema, configurations: configuration)
         } catch {

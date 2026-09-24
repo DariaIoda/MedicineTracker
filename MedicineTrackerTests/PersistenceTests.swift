@@ -2,11 +2,11 @@ import XCTest
 import SwiftData
 @testable import MedicineTracker 
 
+@MainActor
 final class PersistenceTests: XCTestCase {
     var context: ModelContext!
     var repository: SwiftDataMedicineRepository!
 
-    @MainActor
     override func setUpWithError() throws {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: Medicine.self, configurations: config)
