@@ -1,6 +1,7 @@
 name: MedicineTracker
 options:
   bundleIdPrefix: com.example
+  createIntermediateGroups: true
 targets:
   MedicineTracker:
     type: application
@@ -14,17 +15,44 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 1.0
+        # Отключаем подпись кода для успешной сборки в GitHub Actions
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
 
   MedicineTrackerTests:
     type: bundle.unit-test
     platform: iOS
+    deploymentTarget: "17.0"
     sources: [MedicineTrackerTests]
     dependencies:
       - target: MedicineTracker
+    settings:
+      base:
+        # Указываем контекст основного приложения для работы тестов
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MedicineTracker.app/$(EXECUTABLE_NAME)"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 
   MedicineTrackerUITests:
     type: bundle.ui-testing
     platform: iOS
+    deploymentTarget: "17.0"
     sources: [MedicineTrackerUITests]
     dependencies:
       - target: MedicineTracker
+    settings:
+      base:
+        TEST_TARGET_NAME: MedicineTracker
+
+# Явно объявляем схему, чтобы скрипт ci_test.sh видел тестовые таргеты
+schemes:
+  MedicineTracker:
+    build:
+      targets:
+        MedicineTracker: all
+        MedicineTrackerTests: [test]
+        MedicineTrackerUITests: [test]
+    test:
+      targets:
+        - MedicineTrackerTests
+        - MedicineTrackerUITests
